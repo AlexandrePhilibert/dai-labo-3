@@ -70,7 +70,7 @@ public class EmitterCommand implements Callable<Integer> {
             // We have to await the latch inside the try-with-resource, otherwise the socket will be closed
             latch.await();
         } catch (Exception e) {
-            LOGGER.error("Could not create multicast soc    ket");
+            LOGGER.error("Could not create multicast socket");
             return 1;
         }
 
