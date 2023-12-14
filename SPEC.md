@@ -22,14 +22,14 @@ and to simplify the implementation.
 
 ### SSP
 
-The SSP uses multicast UDP, with the reserved multicast address 239.0.192.5 with the port 25591.
+The SSP uses multicast UDP, with the reserved multicast addresses 239.0.192.5 & 239.0.192.6 with the port 25591.
 
 The sending party (the service) does not expect a response. This is indented as a way to check for the outbound
 networking status.
 
 ### SQP
 
-The SQP uses unicast UDP, with the reserved port 25591.
+The SQP uses unicast UDP, with the reserved port 25592.
 
 The protocol follows the Request Response messaging pattern. It is described more in details in the next section
 
@@ -40,6 +40,15 @@ The protocol follows the Request Response messaging pattern. It is described mor
 The SSP is voluntarily simple, in order to facilitate implementation.
 
 The majority of the difficulty resides in the server implementation.
+
+The multicast address depends on the wanted visibility:
+
+| IP Address  | Visibility |
+|-------------|------------|
+| 239.0.192.5 | Public     |
+| 239.0.192.6 | Private    |
+
+Other ports MAY be used by the implementation.
 
 The protocol relies on the following simple datagram, sent at regular intervals (at most 5s)
 
@@ -64,3 +73,79 @@ Currently, only the following metrics must be supported:
 - `ram`, an integer value, represents the current ram usage of the service / machine, in megabytes.
 
 As this protocol is Fire & Forget, no response is to be expected from the server.
+
+### SQP
+
+The SQP protocol is a Request & Response protocol, and every message should expect a corresponding response.
+
+The client MAY send the command multiple times, until a response is received.
+
+#### `LIST`
+
+Allows to list status of different clients.
+
+The query is of the following format:
+
+```
+LIST [status=(UP|DOWN)]
+```
+
+Where `status` allows for the client to filter the clients by their status:
+> [!INFO]
+> It is important to note that the interpretation of `alive` and `dead` is left to the implementer,
+> but a service cannot be both at any given time.
+
+- The value `UP` means that only services that are currently **alive** will be returned by the server
+- The value `DOWN` means that only services that are currently **dead** will be returned by the server
+
+The server MUST respond to the source ip and port with a message of the following format:
+
+```
+<service1_name> UP
+<service2_name> DOWN
+...
+```
+
+The implementer MAY support listings above the maximal length of the packet,
+as defined by this specification.
+
+#### `GET`
+
+The `GET` command allows to get the details of a given service.
+The command is of the following format:
+
+```
+GET <service_name> [type=(last|avg)]
+```
+
+Where `type` indicates the data that will be returned by the server (case-insensitive):
+
+- `last` will only get the last value
+- `avg` will extract absolute averages (since the server started)
+
+The response of the server should look like the following:
+
+```
+name=<service_name>
+up=true
+m_cpu=500/2000
+mb_ram=1024/2048
+```
+
+The format is the same as the one in the SSP protocol, with a major difference:
+
+In the event that the server considers the other service dead (the method of determining the deadness of a service is
+left to the implementer, but can be based upon a PING, or the non-retrieval of a status datagram since a fixed amount of
+time)
+
+In that case, the output may look like this:
+
+```
+name=<service_name>
+up=false
+```
+
+In the case of the client selecting the `avg` type in the request, the following changes to the SSP MUST be considered:
+- The integer metrics are transformed to floating point averages, for both the current, and maximum values.
+- The following additional metrics MUST be present:
+  - `p_uptime`, the uptime in percents (with AT LEAST 3 decimal places of precision)
