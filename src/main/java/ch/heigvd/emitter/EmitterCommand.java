@@ -1,5 +1,7 @@
 package ch.heigvd.emitter;
 
+import ch.heigvd.protocol.StatusDatagram;
+import ch.heigvd.utils.RandomGenerator;
 import org.apache.logging.log4j.core.config.Configurator;
 import picocli.CommandLine;
 
@@ -51,6 +53,17 @@ public class EmitterCommand implements Callable<Integer> {
     )
     private int frequency;
 
+    @CommandLine.Option(
+            names = {"-n", "--name"},
+            description = "The name of the service"
+    )
+    private String name;
+
+
+    // Internal state
+    private final Long totalRam = ((int) (Math.random() * 8) + 8) * 1024L;
+    private final Long cpus = ((int) (Math.random() * 8) + 2) * 1000L;
+
     @Override
     public Integer call() {
         Configurator.setRootLevel(Level.INFO);
@@ -81,8 +94,8 @@ public class EmitterCommand implements Callable<Integer> {
         return 0;
     }
 
-    private static void send(MulticastSocket socket, InetSocketAddress group) throws RuntimeException {
-        String message = "hello";
+    private void send(MulticastSocket socket, InetSocketAddress group) throws RuntimeException {
+        String message = generateDatagram();
 
         byte[] payload = message.getBytes(StandardCharsets.UTF_8);
 
@@ -98,5 +111,18 @@ public class EmitterCommand implements Callable<Integer> {
             LOGGER.error("Could not send datagram: " + e.getMessage());
             throw new RuntimeException(e);
         }
+    }
+
+
+    public String generateDatagram() {
+        // generate the total
+        StatusDatagram statusDatagram = new StatusDatagram();
+        statusDatagram.set("name", name);
+        statusDatagram.set("up", String.valueOf(Math.random() > 0.1d));
+        statusDatagram.set("mb_ram", RandomGenerator.randomValue(totalRam), String.valueOf(totalRam));
+        statusDatagram.set("m_cpu", RandomGenerator.randomValue(cpus), String.valueOf(cpus));
+
+
+        return statusDatagram.toString();
     }
 }

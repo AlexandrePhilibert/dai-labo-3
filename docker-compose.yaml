@@ -15,6 +15,7 @@ services:
     command:
       - emitter
       - --interface=eth0
+      - --name=bingo-nameo
 
   private-emitter:
     image: ghcr.io/alexandrephilibert/smt:latest
@@ -27,6 +28,7 @@ services:
       - emitter
       - --interface=eth0
       - --private
+      - --name=papaya
 
   receiver:
     image: ghcr.io/alexandrephilibert/smt:latest
@@ -43,6 +45,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    ports:
+      - 25592:25592
     networks:
       - network
     command:
