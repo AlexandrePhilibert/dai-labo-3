@@ -58,7 +58,7 @@ public class ServerCommand implements Callable<Integer> {
 
         executor.submit(new EmitterHandler(publicHost, emitterPort, interfaceName));
         executor.submit(new EmitterHandler(privateHost, emitterPort, interfaceName));
-        executor.submit(new ReceiverHandler(receiverPort));
+        executor.submit(new ClientHandler(receiverPort));
 
         latch.await();
 
@@ -71,61 +71,72 @@ public class ServerCommand implements Callable<Integer> {
             String interfaceName
     ) implements Runnable {
         @Override
-            public void run() {
-                try (MulticastSocket receiverSocket = new MulticastSocket(port)) {
-                    InetAddress multicastAddress = InetAddress.getByName(host);
-                    InetSocketAddress group = new InetSocketAddress(multicastAddress, port);
-                    NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
-                    receiverSocket.joinGroup(group, networkInterface);
+        public void run() {
+            try (MulticastSocket receiverSocket = new MulticastSocket(port)) {
+                InetAddress multicastAddress = InetAddress.getByName(host);
+                InetSocketAddress group = new InetSocketAddress(multicastAddress, port);
+                NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
+                receiverSocket.joinGroup(group, networkInterface);
 
-                    byte[] data = new byte[1024];
+                byte[] data = new byte[1024];
 
-                    while (true) {
-                        DatagramPacket datagram = new DatagramPacket(data, data.length);
+                while (true) {
+                    DatagramPacket datagram = new DatagramPacket(data, data.length);
 
-                        receiverSocket.receive(datagram);
+                    receiverSocket.receive(datagram);
 
-                        String message = new String(
-                                datagram.getData(),
-                                datagram.getOffset(),
-                                datagram.getLength(),
-                                StandardCharsets.UTF_8
-                        );
+                    String message = new String(
+                            datagram.getData(),
+                            datagram.getOffset(),
+                            datagram.getLength(),
+                            StandardCharsets.UTF_8
+                    );
 
-                        System.out.println(message);
-                    }
-
-                } catch (Exception e) {
-                    LOGGER.error("Error while creating socket");
+                    System.out.println(message);
                 }
+
+            } catch (Exception e) {
+                LOGGER.error("Error while creating socket");
             }
         }
+    }
 
-        private record ReceiverHandler(
+    private record ClientHandler(
             int port
-        ) implements Runnable {
-            @Override
-            public void run() {
-                try (DatagramSocket socket = new DatagramSocket(port)) {
-                    byte[] data = new byte[1024];
+    ) implements Runnable {
+        @Override
+        public void run() {
+            try (DatagramSocket socket = new DatagramSocket(port)) {
+                byte[] data = new byte[1024];
 
-                    while (true) {
-                        DatagramPacket datagram = new DatagramPacket(data, data.length);
+                while (true) {
+                    DatagramPacket datagram = new DatagramPacket(data, data.length);
 
-                        socket.receive(datagram);
+                    socket.receive(datagram);
 
-                        String message = new String(
-                                datagram.getData(),
-                                datagram.getOffset(),
-                                datagram.getLength(),
-                                StandardCharsets.UTF_8
+                    String message = new String(
+                            datagram.getData(),
+                            datagram.getOffset(),
+                            datagram.getLength(),
+                            StandardCharsets.UTF_8
+                    );
+
+                    System.out.println(message);
+
+                    // If the message is ping, respond with pong
+                    if (message.equals("ping")) {
+                        byte[] bytes = "pong".getBytes(StandardCharsets.UTF_8);
+                        DatagramPacket datagramPacket = new DatagramPacket(
+                                bytes,
+                                bytes.length,
+                                datagram.getSocketAddress()
                         );
-
-                        System.out.println(message);
+                        socket.send(datagramPacket);
                     }
-                } catch (Exception e) {
-                    LOGGER.error("Could not create receiver handler socket");
                 }
+            } catch (Exception e) {
+                LOGGER.error("Could not create receiver handler socket");
             }
         }
+    }
 }

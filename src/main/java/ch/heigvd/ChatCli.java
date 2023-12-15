@@ -1,7 +1,7 @@
 package ch.heigvd;
 
 import ch.heigvd.emitter.EmitterCommand;
-import ch.heigvd.receiver.ReceiverCommand;
+import ch.heigvd.client.ClientCommand;
 import ch.heigvd.server.ServerCommand;
 import picocli.CommandLine;
 
@@ -13,7 +13,7 @@ import picocli.CommandLine;
         subcommands = {
                 ServerCommand.class,
                 EmitterCommand.class,
-                ReceiverCommand.class,
+                ClientCommand.class,
         }
 )
 public class ChatCli {
