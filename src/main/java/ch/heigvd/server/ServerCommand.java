@@ -3,6 +3,9 @@ package ch.heigvd.server;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,18 +16,32 @@ public class ServerCommand implements Callable<Integer> {
     private static final Logger LOGGER = LogManager.getLogger(ServerCommand.class);
 
     @CommandLine.Option(
-            names = {"-H", "--host"},
-            description = "The multicast subnet to use",
-            required = true
+            names = {"--public-host"},
+            description = "The multicast public subnet to use",
+            defaultValue = "239.0.192.5"
     )
-    private String host;
+    private String publicHost;
 
     @CommandLine.Option(
-            names = {"-p", "--port"},
-            description = "The port to use",
+            names = {"--private-host"},
+            description = "The multicast private subnet to use",
+            defaultValue = "239.0.192.6"
+    )
+    private String privateHost;
+
+    @CommandLine.Option(
+            names = {"--emitter-port"},
+            description = "The emitter port to use",
             defaultValue = "25591"
     )
-    private int port;
+    private int emitterPort;
+
+    @CommandLine.Option(
+            names = {"--receiver-port"},
+            description = "The receiver port to use",
+            defaultValue = "25592"
+    )
+    private int receiverPort;
 
     @CommandLine.Option(
             names = {"-i", "--interface"},
@@ -35,32 +52,80 @@ public class ServerCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        try (MulticastSocket receiverSocket = new MulticastSocket(port)) {
-            InetAddress multicastAddress = InetAddress.getByName(host);
-            InetSocketAddress group = new InetSocketAddress(multicastAddress, port);
-            NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
-            receiverSocket.joinGroup(group, networkInterface);
+        ExecutorService executor = Executors.newFixedThreadPool(3);
 
-            byte[] data = new byte[1024];
+        CountDownLatch latch = new CountDownLatch(1);
 
-            while (true) {
-                DatagramPacket datagram = new DatagramPacket(data, data.length);
+        executor.submit(new EmitterHandler(publicHost, emitterPort, interfaceName));
+        executor.submit(new EmitterHandler(privateHost, emitterPort, interfaceName));
+        executor.submit(new ReceiverHandler(receiverPort));
 
-                receiverSocket.receive(datagram);
+        latch.await();
 
-                String message = new String(
-                        datagram.getData(),
-                        datagram.getOffset(),
-                        datagram.getLength(),
-                        StandardCharsets.UTF_8
-                );
-
-                System.out.println(message);
-            }
-
-        } catch (Exception e) {
-            LOGGER.error("Error while creating socket");
-            return 1;
-        }
+        return 0;
     }
+
+    private record EmitterHandler(
+            String host,
+            int port,
+            String interfaceName
+    ) implements Runnable {
+        @Override
+            public void run() {
+                try (MulticastSocket receiverSocket = new MulticastSocket(port)) {
+                    InetAddress multicastAddress = InetAddress.getByName(host);
+                    InetSocketAddress group = new InetSocketAddress(multicastAddress, port);
+                    NetworkInterface networkInterface = NetworkInterface.getByName(interfaceName);
+                    receiverSocket.joinGroup(group, networkInterface);
+
+                    byte[] data = new byte[1024];
+
+                    while (true) {
+                        DatagramPacket datagram = new DatagramPacket(data, data.length);
+
+                        receiverSocket.receive(datagram);
+
+                        String message = new String(
+                                datagram.getData(),
+                                datagram.getOffset(),
+                                datagram.getLength(),
+                                StandardCharsets.UTF_8
+                        );
+
+                        System.out.println(message);
+                    }
+
+                } catch (Exception e) {
+                    LOGGER.error("Error while creating socket");
+                }
+            }
+        }
+
+        private record ReceiverHandler(
+            int port
+        ) implements Runnable {
+            @Override
+            public void run() {
+                try (DatagramSocket socket = new DatagramSocket(port)) {
+                    byte[] data = new byte[1024];
+
+                    while (true) {
+                        DatagramPacket datagram = new DatagramPacket(data, data.length);
+
+                        socket.receive(datagram);
+
+                        String message = new String(
+                                datagram.getData(),
+                                datagram.getOffset(),
+                                datagram.getLength(),
+                                StandardCharsets.UTF_8
+                        );
+
+                        System.out.println(message);
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("Could not create receiver handler socket");
+                }
+            }
+        }
 }

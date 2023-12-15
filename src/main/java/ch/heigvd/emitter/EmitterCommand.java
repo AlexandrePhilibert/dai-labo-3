@@ -17,11 +17,11 @@ public class EmitterCommand implements Callable<Integer> {
     private static final Logger LOGGER = LogManager.getLogger(EmitterCommand.class);
 
     @CommandLine.Option(
-            names = {"-H", "--host"},
-            description = "The multicast subnet to use",
-            required = true
+            names = {"--private"},
+            description = "Emit private status messages",
+            defaultValue = "false"
     )
-    private String host;
+    private boolean isPrivate;
 
     @CommandLine.Option(
             names = {"-p", "--port"},
@@ -58,6 +58,8 @@ public class EmitterCommand implements Callable<Integer> {
         CountDownLatch latch = new CountDownLatch(1);
 
         ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+
+        String host = isPrivate ? "239.0.192.6" : "239.0.192.5";
 
         try (MulticastSocket socket = new MulticastSocket(port)) {
             InetAddress multicastAddress = InetAddress.getByName(host);

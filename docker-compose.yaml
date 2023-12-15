@@ -5,7 +5,7 @@ networks:
     name: network
 
 services:
-  emitter:
+  public-emitter:
     image: ghcr.io/alexandrephilibert/smt:latest
     build:
       context: .
@@ -14,8 +14,19 @@ services:
       - network
     command:
       - emitter
-      - --host=239.0.192.5
       - --interface=eth0
+
+  private-emitter:
+    image: ghcr.io/alexandrephilibert/smt:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    networks:
+      - network
+    command:
+      - emitter
+      - --interface=eth0
+      - --private
 
   receiver:
     image: ghcr.io/alexandrephilibert/smt:latest
@@ -36,5 +47,4 @@ services:
       - network
     command:
       - server
-      - --host=239.0.192.5
       - --interface=eth0
