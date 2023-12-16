@@ -171,8 +171,10 @@ sequenceDiagram
   Note over Client,Server: LIST
   Server->>Client: Responds with status of services [Req/Res]
   Note over Server,Client: auth_service UP<br />maps_service DOWN
-  Client->>Server: auth_service [Req/Res]
-  Note over Server,Client: name=auth_service<br />up=true<br />m_cpu=500/4000<br />mb_ram=245/2048
+  Client->>Server: Get Auth Service status [Req/Res]
+  Note over Client,Server: GET auth_service
+  Server->>Client: Responds with Auth Service status [Req/Res]
+  Note over Client,Server: name=auth_service<br />up=true<br />m_cpu=500/4000<br />mb_ram=245/2048
 ```
 
 ## Error example
