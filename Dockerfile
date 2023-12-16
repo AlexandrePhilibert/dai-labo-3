@@ -1,8 +1,22 @@
-FROM eclipse-temurin:17
+FROM eclipse-temurin:17 as builder
 
 WORKDIR /app
 
-COPY target/dai-labo-3-1.0-SNAPSHOT.jar /app/dai-labo-3-1.0-SNAPSHOT.jar
+COPY .mvn .mvn
+COPY mvnw mvnw
+COPY pom.xml pom.xml
+
+RUN ./mvnw dependency:go-offline
+
+COPY src src
+
+RUN ./mvnw package
+
+FROM eclipse-temurin:17 as app
+
+WORKDIR /app
+
+COPY --from=builder /app/target/dai-labo-3-1.0-SNAPSHOT.jar /app/
 
 ENTRYPOINT ["java", "-jar", "dai-labo-3-1.0-SNAPSHOT.jar"]
 
