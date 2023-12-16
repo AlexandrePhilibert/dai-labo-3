@@ -46,7 +46,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 25592:25592
+      - 25592:25592/udp
     networks:
       - network
     command:
