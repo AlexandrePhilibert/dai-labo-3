@@ -18,7 +18,7 @@ public class ClientCommand implements Callable<Integer> {
     @CommandLine.Option(
             names = {"-p", "--port"},
             description = "The port of the server to connect to.",
-            defaultValue = "25591"
+            defaultValue = "25592"
     )
     private int port;
 
@@ -32,6 +32,8 @@ public class ClientCommand implements Callable<Integer> {
     @Override
     public Integer call() throws Exception {
         try (DatagramSocket socket = new DatagramSocket()) {
+            System.out.println("Opened UDP socket on port " + socket.getLocalPort());
+
             byte[] buffer = new byte[1024];
             DatagramPacket datagram = new DatagramPacket(buffer, buffer.length);
             while (true) {
@@ -44,8 +46,6 @@ public class ClientCommand implements Callable<Integer> {
                 );
 
                 socket.send(pingPacket);
-
-                System.out.println("Sent packet!");
 
                 socket.receive(datagram);
 

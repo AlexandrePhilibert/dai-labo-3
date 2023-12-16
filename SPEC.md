@@ -74,6 +74,9 @@ Currently, only the following metrics must be supported:
 
 As this protocol is Fire & Forget, no response is to be expected from the server.
 
+If the packet is formatted incorrectly, the server MUST silently drop the packet, and MAY log / alert operators
+about this incident.
+
 ### SQP
 
 The SQP protocol is a Request & Response protocol, and every message should expect a corresponding response.
@@ -122,6 +125,7 @@ Where `type` indicates the data that will be returned by the server (case-insens
 
 - `last` will only get the last value
 - `avg` will extract absolute averages (since the server started)
+- In the case an unknown type is sent, an `ERR` response is sent (cf the according section)
 
 The response of the server should look like the following:
 
@@ -146,9 +150,32 @@ up=false
 ```
 
 In the case of the client selecting the `avg` type in the request, the following changes to the SSP MUST be considered:
+
 - The integer metrics are transformed to floating point averages, for both the current, and maximum values.
 - The following additional metrics MUST be present:
   - `p_uptime`, the uptime in percents (with AT LEAST 3 decimal places of precision)
+  - 
+### `ERR` (Response)
+
+An `ERR` response represents that an error occurred while processing the request.
+
+The err response is of the following format:
+
+```
+ERR <reason>
+```
+
+The client MAY inform the user of the error message, and MAY retry at a later time.
+
+The reason parameter is required, and describes the reasoning of the denial.
+
+The server MUST use the default reasons described in the table below where applicable, and MAY use custom values.
+
+| reason         | description                                             |  
+|----------------|---------------------------------------------------------|  
+| invalid_status | The `status` parameter in the `LIST` request is invalid |
+| invalid_type   | The `type` parameter in the `GET` request is invalid    |
+
 
 # Examples
 
