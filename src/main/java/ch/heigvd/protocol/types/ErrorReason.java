@@ -2,7 +2,9 @@ package ch.heigvd.protocol.types;
 
 public enum ErrorReason {
     INVALID_STATUS("invalid_status"),
-    INVALID_TYPE("invalid_type");
+    INVALID_TYPE("invalid_type"),
+    UNKNOWN_COMMAND("unknown_command"),
+    UNKNOWN_SERVICE("unknown_service");
 
     private final String value;
 

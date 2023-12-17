@@ -30,16 +30,6 @@ services:
       - --private
       - --name=papaya
 
-  receiver:
-    image: ghcr.io/alexandrephilibert/smt:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    networks:
-      - network
-    command:
-      - receiver
-
   server:
     image: ghcr.io/alexandrephilibert/smt:latest
     build:
