@@ -2,11 +2,22 @@ package ch.heigvd.server;
 
 import java.net.*;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import ch.heigvd.protocol.StatusDatagram;
+import ch.heigvd.protocol.request.GetRequest;
+import ch.heigvd.protocol.request.ListRequest;
+import ch.heigvd.protocol.response.ErrorResponse;
+import ch.heigvd.protocol.response.ListResponse;
+import ch.heigvd.protocol.types.ErrorReason;
+import ch.heigvd.protocol.types.GetType;
+import ch.heigvd.protocol.types.Status;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import picocli.CommandLine;
@@ -50,15 +61,19 @@ public class ServerCommand implements Callable<Integer> {
     )
     private String interfaceName;
 
+
+    //
+    private ServerState state = new ServerState();
+
     @Override
     public Integer call() throws Exception {
         ExecutorService executor = Executors.newFixedThreadPool(3);
 
         CountDownLatch latch = new CountDownLatch(1);
 
-        executor.submit(new EmitterHandler(publicHost, emitterPort, interfaceName));
-        executor.submit(new EmitterHandler(privateHost, emitterPort, interfaceName));
-        executor.submit(new ClientHandler(receiverPort));
+        executor.submit(new EmitterHandler(state, publicHost, emitterPort, interfaceName, false));
+        executor.submit(new EmitterHandler(state, privateHost, emitterPort, interfaceName, true));
+        executor.submit(new ClientHandler(state, receiverPort));
 
         latch.await();
 
@@ -66,9 +81,11 @@ public class ServerCommand implements Callable<Integer> {
     }
 
     private record EmitterHandler(
+            ServerState state,
             String host,
             int port,
-            String interfaceName
+            String interfaceName,
+            boolean isHidden
     ) implements Runnable {
         @Override
         public void run() {
@@ -92,16 +109,24 @@ public class ServerCommand implements Callable<Integer> {
                             StandardCharsets.UTF_8
                     );
 
-                    System.out.println(message);
+                    // Parse the datagram
+                    StatusDatagram parsedDatagram = StatusDatagram.parse(message);
+
+                    // If the datagram has a name, use it
+                    boolean hasName = parsedDatagram.get("name") != null;
+                    if (hasName) {
+                        state.putStatus(parsedDatagram, isHidden);
+                    }
                 }
 
             } catch (Exception e) {
-                LOGGER.error("Error while creating socket");
+                LOGGER.error("Error while creating socket", e);
             }
         }
     }
 
     private record ClientHandler(
+            ServerState state,
             int port
     ) implements Runnable {
         @Override
@@ -119,23 +144,60 @@ public class ServerCommand implements Callable<Integer> {
                             datagram.getOffset(),
                             datagram.getLength(),
                             StandardCharsets.UTF_8
+                    ).trim();
+
+                    String response = switch (message.split(" ")[0].toLowerCase(Locale.ROOT)) {
+                        case "get" -> {
+                            GetRequest request = GetRequest.parse(message);
+                            if (request == null) {
+                                yield new ErrorResponse(ErrorReason.UNKNOWN_COMMAND).toString();
+                            }
+
+                            // Get the service
+                            ServerState.Service service = state.getService(request.getServiceName());
+
+                            if (service == null) {
+                                yield new ErrorResponse(ErrorReason.UNKNOWN_SERVICE).toString();
+                            }
+
+                            GetType type = request.getType();
+                            if (type == null) {
+                                type = GetType.LAST;
+                            }
+
+                            yield (Optional.ofNullable(switch (type) {
+                                case AVERAGE -> service.getAverage();
+                                case LAST -> service.getLastStatus().status();
+                            })).map(Object::toString).orElse("");
+                        }
+                        case "list" -> {
+                            ListRequest request = ListRequest.getRequest(message);
+                            if (request == null) {
+                                yield new ErrorResponse(ErrorReason.UNKNOWN_COMMAND).toString();
+                            }
+                            ListResponse listResponse = new ListResponse();
+                            state.getAllServices().stream()
+                                    .filter(e -> !e.hidden())
+                                    .filter(e -> request.getRequestedStatus() == null
+                                            || request.getRequestedStatus() == Status.getFromBoolean(e.isUp()))
+                                    .forEach(e -> listResponse.add(e.name(), Status.getFromBoolean(e.isUp())));
+
+                            yield listResponse.toString();
+                        }
+                        default -> new ErrorResponse(ErrorReason.UNKNOWN_COMMAND).toString();
+                    };
+
+                    byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+                    DatagramPacket responsePacket = new DatagramPacket(
+                            bytes,
+                            bytes.length,
+                            datagram.getSocketAddress()
                     );
 
-                    System.out.println(message);
-
-                    // If the message is ping, respond with pong
-                    if (message.equals("ping")) {
-                        byte[] bytes = "pong".getBytes(StandardCharsets.UTF_8);
-                        DatagramPacket datagramPacket = new DatagramPacket(
-                                bytes,
-                                bytes.length,
-                                datagram.getSocketAddress()
-                        );
-                        socket.send(datagramPacket);
-                    }
+                    socket.send(responsePacket);
                 }
             } catch (Exception e) {
-                LOGGER.error("Could not create receiver handler socket");
+                LOGGER.error("Could not create receiver handler socket", e);
             }
         }
     }

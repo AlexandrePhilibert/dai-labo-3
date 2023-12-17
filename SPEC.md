@@ -153,8 +153,8 @@ In the case of the client selecting the `avg` type in the request, the following
 
 - The integer metrics are transformed to floating point averages, for both the current, and maximum values.
 - The following additional metrics MUST be present:
-  - `p_uptime`, the uptime in percents (with AT LEAST 3 decimal places of precision)
-  - 
+    - `p_uptime`, the uptime in percents (with AT LEAST 3 decimal places of precision)
+
 ### `ERR` (Response)
 
 An `ERR` response represents that an error occurred while processing the request.
@@ -171,10 +171,12 @@ The reason parameter is required, and describes the reasoning of the denial.
 
 The server MUST use the default reasons described in the table below where applicable, and MAY use custom values.
 
-| reason         | description                                             |  
-|----------------|---------------------------------------------------------|  
-| invalid_status | The `status` parameter in the `LIST` request is invalid |
-| invalid_type   | The `type` parameter in the `GET` request is invalid    |
+| reason          | description                                             |  
+|-----------------|---------------------------------------------------------|  
+| invalid_status  | The `status` parameter in the `LIST` request is invalid |
+| invalid_type    | The `type` parameter in the `GET` request is invalid    |
+| unknown_command | The `command` sent is not recognized by the server      |
+| unknown_service | The `service_name` requested is not known by the server |
 
 
 # Examples
