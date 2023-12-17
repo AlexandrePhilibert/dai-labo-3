@@ -12,14 +12,14 @@ public class ListRequest {
         return requestedStatus;
     }
 
-    public static ListRequest getRequest(String datagram) {
-        String lowerDatagram = datagram.toLowerCase(Locale.ROOT);
-        if (!lowerDatagram.startsWith("list")) {
+    public static ListRequest getRequest(String input) {
+        String inputLowerCase = input.toLowerCase(Locale.ROOT);
+        if (!inputLowerCase.startsWith("list")) {
             return null;
         }
         // generate a parser for the following format
         // LIST [type=(up|down)]
-        String[] parts = lowerDatagram.split(" ");
+        String[] parts = inputLowerCase.split(" ");
         ListRequest listRequest = new ListRequest();
         if (parts.length > 1) {
             String[] statusParts = parts[1].split("=");

@@ -22,12 +22,12 @@ public class GetRequest {
     }
 
     public static GetRequest parse(String input) {
-        String inputLowered = input.toLowerCase(Locale.ROOT);
-        if (!inputLowered.startsWith("get")) {
+        String inputLowerCase = input.toLowerCase(Locale.ROOT);
+        if (!inputLowerCase.startsWith("get")) {
             return null;
         }
 
-        String[] parts = inputLowered.split(" ");
+        String[] parts = inputLowerCase.split(" ");
         if (parts.length < 2) {
             throw new IllegalArgumentException("Invalid input format");
         }
