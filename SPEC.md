@@ -177,3 +177,58 @@ The server MUST use the default reasons described in the table below where appli
 | invalid_type    | The `type` parameter in the `GET` request is invalid    |
 | unknown_command | The `command` sent is not recognized by the server      |
 | unknown_service | The `service_name` requested is not known by the server |
+
+
+# Examples
+
+Messages are anotated with either [Req/Res] (Request-Response) or [F&F] (Fire-and-forget) to indicate wether the sender expects a response.
+
+## Working example
+
+```mermaid
+sequenceDiagram
+  participant Emitter1
+  participant Emitter2
+  participant Server
+  participant Client
+
+  Emitter1->>Server: Emits status of Auth Service [F&F]
+  Note over Emitter1,Server: SSP name=auth_service, <br/>up=true<br />m_cpu=500/2000<br />mb_ram=245/2048
+  Emitter2->>Server: Emits status of Maps Service [F&F]
+  Note over Emitter2,Server: SSP name=maps_service, <br/>up=true<br />m_cpu=500/2000<br />mb_ram=1024/2048
+  Client->>Server: List status of services [Req/Res]
+  Note over Client,Server: LIST
+  Server->>Client: Responds with status of services [Req/Res]
+  Note over Server,Client: auth_service UP<br />maps_service DOWN
+  Client->>Server: Get Auth Service status [Req/Res]
+  Note over Client,Server: GET auth_service
+  Server->>Client: Responds with Auth Service status [Req/Res]
+  Note over Client,Server: name=auth_service<br />up=true<br />m_cpu=500/4000<br />mb_ram=245/2048
+```
+
+## Error example
+
+Messages are anotated with [DROP] fit the datagram cannot reach its destination.
+
+```mermaid
+sequenceDiagram
+  participant Emitter1
+  participant Emitter2
+  participant Server
+  participant Client
+
+  Emitter1->>Server: Emits status of Auth Service [F&F]
+  Note over Emitter1,Server: SSP name=auth_service, <br/>up=true<br />m_cpu=500/2000<br />mb_ram=245/2048
+   Emitter2--xServer: Emits status of Maps Service [F&F] [DROP]
+  Note over Emitter2,Server: SSP name=maps_service, <br/>up=true<br />m_cpu=500/2000<br />mb_ram=1024/2048
+  Client->>Server: Sends unkown command [Req/Res]
+  Note over Client,Server: HELLO
+  Server->>Client: Responds with an error [Req/Res]
+  Note over Server,Client: ERR unkown_command
+  Client->>Server: List status of services [Req/Res]
+  Note over Client,Server: LIST
+  Server->>Client: Responds with status of services [Req/Res]
+  Note over Server,Client: auth_service UP
+```
+
+All status datagrams comming from the Maps Service have been dropped, the `LIST` command doesn't return any information about this service.
