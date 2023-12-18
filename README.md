@@ -55,7 +55,7 @@ java -jar ./target/dai-labo-3-1.0-SNAPSHOT.jar --help
 For example, you can run the server with the following command:
 
 ```sh
-java -jar ./target/dai-labo-3-1.0-SNAPSHOT.jar server interface=<interface>
+java -jar ./target/dai-labo-3-1.0-SNAPSHOT.jar server --interface=<interface>
 ```
 
 Where `<interface>` is one of your network interfaces.
