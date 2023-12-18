@@ -50,6 +50,8 @@ You can get more informations using the the following command:
 java -jar ./target/dai-labo-3-1.0-SNAPSHOT.jar --help  
 ```
 
+### Server example
+
 For example, you can run the server with the following command:
 
 ```sh
@@ -62,3 +64,18 @@ You can find more examples in the [docker-compose.yaml](./docker-compose.yaml) f
 
 If no errors are output by the CLI, the app should be running 
 
+### Client example
+
+You can list the services using the following command:
+
+```sh
+java -jar ./target/dai-labo-3-1.0-SNAPSHOT.jar client            
+```
+
+You can then list the status of a service using:
+
+```sh
+java -jar ./target/dai-labo-3-1.0-SNAPSHOT.jar client -n <service>
+```
+
+Where `<service>` is the name of the service displayed in the list of services.

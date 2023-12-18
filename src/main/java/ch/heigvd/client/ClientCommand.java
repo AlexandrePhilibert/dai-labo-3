@@ -2,6 +2,8 @@ package ch.heigvd.client;
 
 import ch.heigvd.protocol.StatusDatagram;
 import ch.heigvd.protocol.response.ListResponse;
+import ch.heigvd.protocol.types.Status;
+import com.diogonunes.jcolor.Attribute;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import picocli.CommandLine;
@@ -15,6 +17,11 @@ import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import static com.diogonunes.jcolor.Ansi.RESET;
+import static com.diogonunes.jcolor.Ansi.colorize;
+
+import java.util.Map;
 import java.util.concurrent.*;
 
 @CommandLine.Command(name = "client", mixinStandardHelpOptions = true, version = "0.0.1", description = "The SMTP receiver")
@@ -29,15 +36,15 @@ public class ClientCommand implements Callable<Integer> {
     private int port;
 
     @CommandLine.Option(
-            names={"-H", "--host"},
-            description="The host of the server to connect to.",
+            names = {"-H", "--host"},
+            description = "The host of the server to connect to.",
             defaultValue = "localhost"
     )
     private String host;
 
     @CommandLine.Option(
-            names={"-n", "--service-name"},
-            description="The name of the service to watch"
+            names = {"-n", "--service-name"},
+            description = "The name of the service to watch"
     )
     private String serviceName;
 
@@ -56,7 +63,7 @@ public class ClientCommand implements Callable<Integer> {
 
             latch.await();
         } catch (Exception e) {
-            LOGGER.error("Error while creating socket", e);
+            LOGGER.error("Error while creating socket: {}", e.getLocalizedMessage());
             return 1;
         }
 
@@ -95,15 +102,48 @@ public class ClientCommand implements Callable<Integer> {
             System.out.println("---");
 
             if (serviceName == null) {
-                System.out.println(ListResponse.parse(message));
+                print(ListResponse.parse(message));
             } else {
-                System.out.println(StatusDatagram.parse(message));
+                print(StatusDatagram.parse(message));
             }
 
 
         } catch (Exception e) {
-            LOGGER.error("An exception occurred while polling the latest information", e);
+            LOGGER.error("An exception occurred while polling the latest information: {}", e.getLocalizedMessage());
         }
+    }
+
+    private void print(StatusDatagram parse) {
+        parse.getAllKeys().forEach(key -> {
+            StatusDatagram.Entry entry = parse.get(key);
+            String total = "";
+
+            if (entry.total().isPresent()) {
+               total = colorize(" / ", RESET) + colorize(entry.total().get(), Attribute.BRIGHT_WHITE_TEXT());
+            }
+
+            System.out.println(
+                    colorize(entry.metric() + "=", Attribute.WHITE_TEXT()) +
+                            colorize(entry.value(), Attribute.BRIGHT_WHITE_TEXT()) +
+                            total
+            );
+        });
+    }
+
+    void print(ListResponse response) {
+        Map<String, Status> statusMap = response.statusMap();
+        int longestKey = statusMap.keySet().stream()
+                .mapToInt(String::length)
+                .max()
+                .orElse(0) + 4;
+
+        statusMap.forEach((key, value) -> {
+            String status = switch (value) {
+                case UP -> colorize(value.name(), Attribute.BRIGHT_GREEN_TEXT());
+                case DOWN -> colorize(value.name(), Attribute.BRIGHT_RED_TEXT());
+            };
+            System.out.println(String.format("%-" + longestKey + "s", key) + status);
+        });
     }
 
     /**
