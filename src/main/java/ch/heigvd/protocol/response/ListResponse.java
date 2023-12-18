@@ -14,6 +14,9 @@ public class ListResponse {
         statusMap.put(serviceName, status);
     }
 
+    public Map<String, Status> statusMap() {
+        return Map.copyOf(statusMap);
+    }
 
     @Override
     public java.lang.String toString() {
